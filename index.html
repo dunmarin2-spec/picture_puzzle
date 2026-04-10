@@ -3,275 +3,215 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>역사의 조각: 200인의 레전드 (PRO)</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700&family=Pretendard:wght@400;600&display=swap" rel="stylesheet">
+    <title>진짜 곡선 퍼즐: 100 마스터피스</title>
     <style>
-        :root {
-            --gold: #d4af37;
-            --dark: #0f0f0f;
-            --card-bg: #1a1a1a;
-        }
-
-        body {
-            background-color: var(--dark);
-            color: #fff;
-            font-family: 'Pretendard', sans-serif;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        header { padding: 30px; text-align: center; width: 100%; background: #000; }
-        h1 { font-family: 'Noto Serif KR', serif; color: var(--gold); margin: 0; letter-spacing: 3px; }
-
-        /* 갤러리 */
-        #gallery-screen { width: 95%; max-width: 1400px; padding: 20px; }
-        #gallery-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 15px;
-        }
-        .gallery-item {
-            background: var(--card-bg);
-            border: 1px solid #333;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: 0.3s;
-            overflow: hidden;
-        }
-        .gallery-item:hover { border-color: var(--gold); transform: translateY(-5px); }
-        .gallery-item img { width: 100%; height: 120px; object-fit: cover; }
-        .gallery-item p { text-align: center; font-size: 0.85rem; margin: 8px; }
-
-        /* 게임 화면 */
-        #game-screen { display: none; flex-direction: column; align-items: center; width: 100%; }
-        #game-container {
-            position: relative;
-            background: #222;
-            border: 2px solid var(--gold);
-            margin: 10px;
-            overflow: hidden; /* 조각이 밖으로 안 나가게 */
-        }
-
-        .piece {
-            position: absolute;
-            cursor: grab;
-            box-sizing: border-box;
-            border: 0.1px solid rgba(255,255,255,0.05);
-        }
-        .piece:active { cursor: grabbing; z-index: 999 !important; }
-        .matched { z-index: 1 !important; border: none; cursor: default; }
-
-        /* 난이도 버튼 */
-        .diff-box { margin: 15px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
-        .diff-btn {
-            padding: 8px 15px;
-            background: #333;
-            color: #fff;
-            border: 1px solid #555;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-        .diff-btn.active { background: var(--gold); color: #000; border-color: var(--gold); font-weight: bold; }
-
-        .back-btn { margin: 15px; color: #aaa; cursor: pointer; text-decoration: underline; }
+        :root { --gold: #d4af37; --dark: #0a0a0a; }
+        body { background: var(--dark); color: white; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow: hidden; }
+        header { padding: 15px; width: 100%; text-align: center; background: #000; border-bottom: 1px solid #333; z-index: 10; }
+        h1 { color: var(--gold); margin: 0; font-size: 1.2rem; }
         
-        /* 알림 팝업 */
-        #message { color: var(--gold); font-weight: bold; margin-bottom: 10px; height: 20px; }
+        #info-box { margin: 10px; text-align: center; z-index: 10; }
+        #game-container { position: relative; background: #111; box-shadow: 0 0 50px #000; }
+        
+        /* 퍼즐 조각 공통 스타일 */
+        .piece { 
+            position: absolute; 
+            cursor: grab; 
+            filter: drop-shadow(0px 0px 2px rgba(0,0,0,0.5));
+        }
+        .piece:active { cursor: grabbing; z-index: 999 !important; filter: drop-shadow(0px 0px 8px var(--gold)); }
+        .matched { cursor: default; z-index: 1 !important; filter: none !important; }
+
+        .btn-box { margin-top: 20px; z-index: 10; }
+        button { padding: 10px 20px; background: #222; border: 1px solid var(--gold); color: var(--gold); font-weight: bold; cursor: pointer; border-radius: 4px; }
+        button:hover { background: var(--gold); color: black; }
     </style>
 </head>
 <body>
 
-<header><h1>PIECES OF HISTORY</h1></header>
+<header><h1>REAL JIGSAW HISTORY</h1></header>
 
-<div id="gallery-screen">
-    <div id="gallery-container"></div>
+<div id="info-box">
+    <h2 id="puzzle-title" style="color:var(--gold); margin: 5px 0; font-size: 1.1rem;">로딩 중...</h2>
 </div>
 
-<div id="game-screen">
-    <div class="back-btn" onclick="backToGallery()">← 다른 작품 선택</div>
-    <h2 id="current-title" style="color: var(--gold); font-family: 'Noto Serif KR', serif; margin: 10px;"></h2>
-    
-    <div class="diff-box">
-        <button class="diff-btn" onclick="setDiff(4)">16조각</button>
-        <button class="diff-btn" onclick="setDiff(6)">36조각</button>
-        <button class="diff-btn" onclick="setDiff(8)">64조각</button>
-        <button class="diff-btn active" onclick="setDiff(10)">100조각 (고수)</button>
-        <button class="diff-btn" onclick="setDiff(12)">144조각 (전설)</button>
-    </div>
+<div id="game-container"></div>
 
-    <div id="message"></div>
-    <div id="game-container"></div>
-
-    <div class="diff-box" style="margin-top:20px;">
-        <button onclick="shufflePieces()" style="padding:10px 30px; cursor:pointer;">조각 섞기</button>
-    </div>
+<div class="btn-box">
+    <button onclick="newGame()">새로운 랜덤 퍼즐</button>
+    <button onclick="shufflePieces()" style="margin-left:10px;">다시 섞기</button>
 </div>
 
 <script src="data.js"></script>
 <script>
-    const gContainer = document.getElementById('gallery-container');
-    const gameScreen = document.getElementById('game-screen');
-    const galScreen = document.getElementById('gallery-screen');
-    const pContainer = document.getElementById('game-container');
-    const msg = document.getElementById('message');
-
-    let currentImg = "";
+    const container = document.getElementById('game-container');
+    const titleEl = document.getElementById('puzzle-title');
+    
+    let currentPuzzle = null;
     let pieces = [];
-    let sideCount = 10; // 기본 10x10 (100조각)
-    let totalSize = 600; // 전체 판 크기 (px)
+    const sideCount = 10; // 100조각
+    let boardSize = Math.min(window.innerWidth * 0.95, window.innerHeight * 0.6, 600);
+    let pSize = boardSize / sideCount;
+    let tabSize = pSize * 0.25; // 튀어나온 코 부분 크기
 
     window.onload = () => {
-        initGallery();
-        checkSaved();
-    };
-
-    function initGallery() {
-        puzzleList.forEach(p => {
-            const item = document.createElement('div');
-            item.className = 'gallery-item';
-            item.onclick = () => startPuzzle(p);
-            item.innerHTML = `<img src="${p.url}"><p>${p.title}</p>`;
-            gContainer.appendChild(item);
-        });
-    }
-
-    function setDiff(n) {
-        sideCount = n;
-        document.querySelectorAll('.diff-btn').forEach(b => {
-            b.classList.remove('active');
-            if(b.innerText.includes(n*n)) b.classList.add('active');
-        });
-        resetGame();
-    }
-
-    function startPuzzle(info, saved = null) {
-        currentImg = info;
-        galScreen.style.display = 'none';
-        gameScreen.style.display = 'flex';
-        document.getElementById('current-title').innerText = info.title;
-
-        // 화면 너비에 맞춰 크기 조절 (모바일 배려)
-        let winW = window.innerWidth * 0.9;
-        totalSize = Math.min(600, winW); 
-        pContainer.style.width = totalSize + 'px';
-        pContainer.style.height = totalSize + 'px';
-
+        const saved = localStorage.getItem('jigsaw_puzzle_save');
         if (saved) {
-            sideCount = Math.sqrt(saved.length);
-            pieces = saved;
+            const parsed = JSON.parse(saved);
+            currentPuzzle = parsed.info;
+            pieces = parsed.data;
+            titleEl.innerText = currentPuzzle.title;
             renderPieces();
         } else {
-            resetGame();
+            newGame();
         }
+    };
+
+    function newGame() {
+        const randomIdx = Math.floor(Math.random() * puzzleList.length);
+        currentPuzzle = puzzleList[randomIdx];
+        titleEl.innerText = currentPuzzle.title;
+        
+        container.style.width = boardSize + 'px';
+        container.style.height = boardSize + 'px';
+
+        createPieces();
+        shufflePieces();
     }
 
-    function resetGame() {
+    function createPieces() {
         pieces = [];
-        const pSize = totalSize / sideCount;
+        // 조각마다 상하좌우 '탭(Tab)' 모양을 랜덤하게 결정 (1: 튀어나옴, -1: 들어감, 0: 평평)
+        const tabs = [];
+        for (let r = 0; r <= sideCount; r++) {
+            tabs[r] = [];
+            for (let c = 0; c <= sideCount; c++) {
+                tabs[r][c] = {
+                    h: (c === 0 || c === sideCount) ? 0 : (Math.random() > 0.5 ? 1 : -1),
+                    v: (r === 0 || r === sideCount) ? 0 : (Math.random() > 0.5 ? 1 : -1)
+                };
+            }
+        }
+
         for (let r = 0; r < sideCount; r++) {
             for (let c = 0; c < sideCount; c++) {
                 pieces.push({
                     id: `p-${r}-${c}`,
+                    r, c,
                     cx: c * pSize, cy: r * pSize, // 정답 위치
-                    px: 0, py: 0, // 현재 위치
-                    m: false // 맞춤 여부
+                    px: 0, py: 0,
+                    m: false,
+                    // 인접한 탭 정보 저장
+                    t: tabs[r][c].v,  // 위
+                    b: tabs[r+1][c].v, // 아래
+                    l: tabs[r][c].h,  // 왼쪽
+                    ri: tabs[r][c+1].h // 오른쪽
                 });
             }
         }
-        shufflePieces();
+    }
+
+    // SVG 패스로 퍼즐 조각 모양 생성
+    function getPath(p) {
+        const s = pSize;
+        const t = tabSize;
+        // 시작점
+        let path = `M ${t} ${t}`;
+        
+        // 상단 변
+        path += ` h ${s/2 - t} ${p.t ? `c 0 ${-t} ${t} ${-t} ${t} 0 c 0 ${t} ${-t} ${t} ${-t} 0` : ''} h ${s/2 - t}`;
+        // 우측 변
+        path += ` v ${s/2 - t} ${p.ri ? `c ${t} 0 ${t} ${t} 0 ${t} c ${-t} 0 ${-t} ${-t} 0 ${-t}` : ''} v ${s/2 - t}`;
+        // 하단 변
+        path += ` h ${-(s/2 - t)} ${p.b ? `c 0 ${t} ${-t} ${t} ${-t} 0 c 0 ${-t} ${t} ${-t} ${t} 0` : ''} h ${-(s/2 - t)}`;
+        // 좌측 변
+        path += ` v ${-(s/2 - t)} ${p.l ? `c ${-t} 0 ${-t} ${-t} 0 ${-t} c ${t} 0 ${t} ${t} 0 ${t}` : ''} v ${-(s/2 - t)} Z`;
+
+        return path;
     }
 
     function renderPieces() {
-        pContainer.innerHTML = '';
-        const pSize = totalSize / sideCount;
-        pieces.forEach(p => {
-            const div = document.createElement('div');
-            div.className = `piece ${p.m ? 'matched' : ''}`;
-            div.style.width = pSize + 'px';
-            div.style.height = pSize + 'px';
-            div.style.backgroundImage = `url(${currentImg.url})`;
-            div.style.backgroundSize = `${totalSize}px ${totalSize}px`;
-            div.style.backgroundPosition = `-${p.cx}px -${p.cy}px`;
-            div.style.left = p.px + 'px';
-            div.style.top = p.py + 'px';
+        container.innerHTML = '';
+        container.style.width = boardSize + 'px';
+        container.style.height = boardSize + 'px';
 
-            if (!p.m) addEvents(div, p);
-            pContainer.appendChild(div);
+        pieces.forEach(p => {
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute("class", `piece ${p.m ? 'matched' : ''}`);
+            // 탭 공간 확보를 위해 실제 pSize보다 크게 설정
+            const viewSize = pSize + tabSize * 2;
+            svg.setAttribute("width", viewSize);
+            svg.setAttribute("height", viewSize);
+            svg.style.left = (p.px - tabSize) + 'px';
+            svg.style.top = (p.py - tabSize) + 'px';
+
+            const maskId = `mask-${p.id}`;
+            svg.innerHTML = `
+                <defs>
+                    <clipPath id="${maskId}">
+                        <path d="${getPath(p)}" />
+                    </clipPath>
+                </defs>
+                <image href="${currentPuzzle.url}" 
+                    x="${-p.cx + tabSize}" y="${-p.cy + tabSize}" 
+                    width="${boardSize}" height="${boardSize}" 
+                    clip-path="url(#${maskId})" />
+            `;
+
+            if (!p.m) addEvents(svg, p);
+            container.appendChild(svg);
         });
     }
 
     function addEvents(el, pObj) {
-        const pSize = totalSize / sideCount;
         const move = (e) => {
             let cx = e.touches ? e.touches[0].clientX : e.clientX;
             let cy = e.touches ? e.touches[0].clientY : e.clientY;
-            let rect = pContainer.getBoundingClientRect();
+            let rect = container.getBoundingClientRect();
             let x = cx - rect.left - (pSize/2);
             let y = cy - rect.top - (pSize/2);
             
-            el.style.left = x + 'px';
-            el.style.top = y + 'px';
+            el.style.left = (x - tabSize) + 'px';
+            el.style.top = (y - tabSize) + 'px';
             pObj.px = x; pObj.py = y;
         };
 
         const stop = () => {
             document.removeEventListener('mousemove', move);
-            document.removeEventListener('mouseup', stop);
             document.removeEventListener('touchmove', move);
-            document.removeEventListener('touchend', stop);
             
-            // 자석 효과 (매우 정교하게)
-            if (Math.abs(pObj.px - pObj.cx) < 15 && Math.abs(pObj.py - pObj.cy) < 15) {
+            if (Math.abs(pObj.px - pObj.cx) < 12 && Math.abs(pObj.py - pObj.cy) < 12) {
                 pObj.px = pObj.cx; pObj.py = pObj.cy;
                 pObj.m = true;
                 renderPieces();
-                saveData();
-                if(pieces.every(x => x.m)) msg.innerText = "🏆 복원 완료!";
+                saveGame();
             }
         };
 
-        const start = () => {
+        el.addEventListener('mousedown', () => {
             document.addEventListener('mousemove', move);
-            document.addEventListener('mouseup', stop);
+            document.addEventListener('mouseup', stop, {once:true});
+        });
+        el.addEventListener('touchstart', (e) => {
+            if(e.cancelable) e.preventDefault();
             document.addEventListener('touchmove', move, {passive:false});
-            document.addEventListener('touchend', stop);
-        };
-
-        el.addEventListener('mousedown', start);
-        el.addEventListener('touchstart', start, {passive:false});
+            document.addEventListener('touchend', stop, {once:true});
+        });
     }
 
     function shufflePieces() {
-        const pSize = totalSize / sideCount;
         pieces.forEach(p => {
             if (!p.m) {
-                p.px = Math.random() * (totalSize - pSize);
-                p.py = Math.random() * (totalSize - pSize);
+                p.px = Math.random() * (boardSize - pSize);
+                p.py = Math.random() * (boardSize - pSize);
             }
         });
-        msg.innerText = "";
         renderPieces();
-        saveData();
+        saveGame();
     }
 
-    function saveData() {
-        localStorage.setItem('puzzle_pro_save', JSON.stringify({info: currentImg, data: pieces}));
-    }
-
-    function checkSaved() {
-        const s = localStorage.getItem('puzzle_pro_save');
-        if (s) {
-            const parsed = JSON.parse(s);
-            if(confirm(`'${parsed.info.title}' 이어서 하시겠습니까?`)) startPuzzle(parsed.info, parsed.data);
-        }
-    }
-
-    function backToGallery() {
-        saveData();
-        gameScreen.style.display = 'none';
-        galScreen.style.display = 'block';
+    function saveGame() {
+        localStorage.setItem('jigsaw_puzzle_save', JSON.stringify({info: currentPuzzle, data: pieces}));
     }
 </script>
 </body>
