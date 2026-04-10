@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>역사의 조각: 200인의 레전드 (PRO)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700&family=Pretendard:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold: #d4af37;
+            --dark: #0f0f0f;
+            --card-bg: #1a1a1a;
+        }
+
+        body {
+            background-color: var(--dark);
+            color: #fff;
+            font-family: 'Pretendard', sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header { padding: 30px; text-align: center; width: 100%; background: #000; }
+        h1 { font-family: 'Noto Serif KR', serif; color: var(--gold); margin: 0; letter-spacing: 3px; }
+
+        /* 갤러리 */
+        #gallery-screen { width: 95%; max-width: 1400px; padding: 20px; }
+        #gallery-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 15px;
+        }
+        .gallery-item {
+            background: var(--card-bg);
+            border: 1px solid #333;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.3s;
+            overflow: hidden;
+        }
+        .gallery-item:hover { border-color: var(--gold); transform: translateY(-5px); }
+        .gallery-item img { width: 100%; height: 120px; object-fit: cover; }
+        .gallery-item p { text-align: center; font-size: 0.85rem; margin: 8px; }
+
+        /* 게임 화면 */
+        #game-screen { display: none; flex-direction: column; align-items: center; width: 100%; }
+        #game-container {
+            position: relative;
+            background: #222;
+            border: 2px solid var(--gold);
+            margin: 10px;
+            overflow: hidden; /* 조각이 밖으로 안 나가게 */
+        }
+
+        .piece {
+            position: absolute;
+            cursor: grab;
+            box-sizing: border-box;
+            border: 0.1px solid rgba(255,255,255,0.05);
+        }
+        .piece:active { cursor: grabbing; z-index: 999 !important; }
+        .matched { z-index: 1 !important; border: none; cursor: default; }
+
+        /* 난이도 버튼 */
+        .diff-box { margin: 15px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .diff-btn {
+            padding: 8px 15px;
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .diff-btn.active { background: var(--gold); color: #000; border-color: var(--gold); font-weight: bold; }
+
+        .back-btn { margin: 15px; color: #aaa; cursor: pointer; text-decoration: underline; }
+        
+        /* 알림 팝업 */
+        #message { color: var(--gold); font-weight: bold; margin-bottom: 10px; height: 20px; }
+    </style>
+</head>
+<body>
+
+<header><h1>PIECES OF HISTORY</h1></header>
+
+<div id="gallery-screen">
+    <div id="gallery-container"></div>
+</div>
+
+<div id="game-screen">
+    <div class="back-btn" onclick="backToGallery()">← 다른 작품 선택</div>
+    <h2 id="current-title" style="color: var(--gold); font-family: 'Noto Serif KR', serif; margin: 10px;"></h2>
+    
+    <div class="diff-box">
+        <button class="diff-btn" onclick="setDiff(4)">16조각</button>
+        <button class="diff-btn" onclick="setDiff(6)">36조각</button>
+        <button class="diff-btn" onclick="setDiff(8)">64조각</button>
+        <button class="diff-btn active" onclick="setDiff(10)">100조각 (고수)</button>
+        <button class="diff-btn" onclick="setDiff(12)">144조각 (전설)</button>
+    </div>
+
+    <div id="message"></div>
+    <div id="game-container"></div>
+
+    <div class="diff-box" style="margin-top:20px;">
+        <button onclick="shufflePieces()" style="padding:10px 30px; cursor:pointer;">조각 섞기</button>
+    </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+    const gContainer = document.getElementById('gallery-container');
+    const gameScreen = document.getElementById('game-screen');
+    const galScreen = document.getElementById('gallery-screen');
+    const pContainer = document.getElementById('game-container');
+    const msg = document.getElementById('message');
+
+    let currentImg = "";
+    let pieces = [];
+    let sideCount = 10; // 기본 10x10 (100조각)
+    let totalSize = 600; // 전체 판 크기 (px)
+
+    window.onload = () => {
+        initGallery();
+        checkSaved();
+    };
+
+    function initGallery() {
+        puzzleList.forEach(p => {
+            const item = document.createElement('div');
+            item.className = 'gallery-item';
+            item.onclick = () => startPuzzle(p);
+            item.innerHTML = `<img src="${p.url}"><p>${p.title}</p>`;
+            gContainer.appendChild(item);
+        });
+    }
+
+    function setDiff(n) {
+        sideCount = n;
+        document.querySelectorAll('.diff-btn').forEach(b => {
+            b.classList.remove('active');
+            if(b.innerText.includes(n*n)) b.classList.add('active');
+        });
+        resetGame();
+    }
+
+    function startPuzzle(info, saved = null) {
+        currentImg = info;
+        galScreen.style.display = 'none';
+        gameScreen.style.display = 'flex';
+        document.getElementById('current-title').innerText = info.title;
+
+        // 화면 너비에 맞춰 크기 조절 (모바일 배려)
+        let winW = window.innerWidth * 0.9;
+        totalSize = Math.min(600, winW); 
+        pContainer.style.width = totalSize + 'px';
+        pContainer.style.height = totalSize + 'px';
+
+        if (saved) {
+            sideCount = Math.sqrt(saved.length);
+            pieces = saved;
+            renderPieces();
+        } else {
+            resetGame();
+        }
+    }
+
+    function resetGame() {
+        pieces = [];
+        const pSize = totalSize / sideCount;
+        for (let r = 0; r < sideCount; r++) {
+            for (let c = 0; c < sideCount; c++) {
+                pieces.push({
+                    id: `p-${r}-${c}`,
+                    cx: c * pSize, cy: r * pSize, // 정답 위치
+                    px: 0, py: 0, // 현재 위치
+                    m: false // 맞춤 여부
+                });
+            }
+        }
+        shufflePieces();
+    }
+
+    function renderPieces() {
+        pContainer.innerHTML = '';
+        const pSize = totalSize / sideCount;
+        pieces.forEach(p => {
+            const div = document.createElement('div');
+            div.className = `piece ${p.m ? 'matched' : ''}`;
+            div.style.width = pSize + 'px';
+            div.style.height = pSize + 'px';
+            div.style.backgroundImage = `url(${currentImg.url})`;
+            div.style.backgroundSize = `${totalSize}px ${totalSize}px`;
+            div.style.backgroundPosition = `-${p.cx}px -${p.cy}px`;
+            div.style.left = p.px + 'px';
+            div.style.top = p.py + 'px';
+
+            if (!p.m) addEvents(div, p);
+            pContainer.appendChild(div);
+        });
+    }
+
+    function addEvents(el, pObj) {
+        const pSize = totalSize / sideCount;
+        const move = (e) => {
+            let cx = e.touches ? e.touches[0].clientX : e.clientX;
+            let cy = e.touches ? e.touches[0].clientY : e.clientY;
+            let rect = pContainer.getBoundingClientRect();
+            let x = cx - rect.left - (pSize/2);
+            let y = cy - rect.top - (pSize/2);
+            
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            pObj.px = x; pObj.py = y;
+        };
+
+        const stop = () => {
+            document.removeEventListener('mousemove', move);
+            document.removeEventListener('mouseup', stop);
+            document.removeEventListener('touchmove', move);
+            document.removeEventListener('touchend', stop);
+            
+            // 자석 효과 (매우 정교하게)
+            if (Math.abs(pObj.px - pObj.cx) < 15 && Math.abs(pObj.py - pObj.cy) < 15) {
+                pObj.px = pObj.cx; pObj.py = pObj.cy;
+                pObj.m = true;
+                renderPieces();
+                saveData();
+                if(pieces.every(x => x.m)) msg.innerText = "🏆 복원 완료!";
+            }
+        };
+
+        const start = () => {
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', stop);
+            document.addEventListener('touchmove', move, {passive:false});
+            document.addEventListener('touchend', stop);
+        };
+
+        el.addEventListener('mousedown', start);
+        el.addEventListener('touchstart', start, {passive:false});
+    }
+
+    function shufflePieces() {
+        const pSize = totalSize / sideCount;
+        pieces.forEach(p => {
+            if (!p.m) {
+                p.px = Math.random() * (totalSize - pSize);
+                p.py = Math.random() * (totalSize - pSize);
+            }
+        });
+        msg.innerText = "";
+        renderPieces();
+        saveData();
+    }
+
+    function saveData() {
+        localStorage.setItem('puzzle_pro_save', JSON.stringify({info: currentImg, data: pieces}));
+    }
+
+    function checkSaved() {
+        const s = localStorage.getItem('puzzle_pro_save');
+        if (s) {
+            const parsed = JSON.parse(s);
+            if(confirm(`'${parsed.info.title}' 이어서 하시겠습니까?`)) startPuzzle(parsed.info, parsed.data);
+        }
+    }
+
+    function backToGallery() {
+        saveData();
+        gameScreen.style.display = 'none';
+        galScreen.style.display = 'block';
+    }
+</script>
+</body>
+</html>
