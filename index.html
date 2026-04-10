@@ -3,24 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>진짜 곡선 퍼즐: 100 마스터피스</title>
+    <title>프로 지그소 퍼즐: 100조각 복원</title>
     <style>
         :root { --gold: #d4af37; --dark: #0a0a0a; }
         body { background: var(--dark); color: white; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow: hidden; }
         header { padding: 15px; width: 100%; text-align: center; background: #000; border-bottom: 1px solid #333; z-index: 10; }
         h1 { color: var(--gold); margin: 0; font-size: 1.2rem; }
+        #game-container { position: relative; background: #111; box-shadow: 0 0 50px #000; margin-top: 20px; }
         
-        #info-box { margin: 10px; text-align: center; z-index: 10; }
-        #game-container { position: relative; background: #111; box-shadow: 0 0 50px #000; }
-        
-        /* 퍼즐 조각 공통 스타일 */
-        .piece { 
-            position: absolute; 
-            cursor: grab; 
-            filter: drop-shadow(0px 0px 2px rgba(0,0,0,0.5));
-        }
-        .piece:active { cursor: grabbing; z-index: 999 !important; filter: drop-shadow(0px 0px 8px var(--gold)); }
-        .matched { cursor: default; z-index: 1 !important; filter: none !important; }
+        .piece { position: absolute; cursor: grab; filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.8)); }
+        .piece:active { cursor: grabbing; z-index: 999 !important; filter: drop-shadow(0px 0px 10px var(--gold)); }
+        .matched { cursor: default; z-index: 1 !important; filter: drop-shadow(0.5px 0.5px 0.5px rgba(255,255,255,0.1)) !important; }
 
         .btn-box { margin-top: 20px; z-index: 10; }
         button { padding: 10px 20px; background: #222; border: 1px solid var(--gold); color: var(--gold); font-weight: bold; cursor: pointer; border-radius: 4px; }
@@ -29,16 +22,16 @@
 </head>
 <body>
 
-<header><h1>REAL JIGSAW HISTORY</h1></header>
+<header><h1>PIECES OF HISTORY (REAL JIGSAW)</h1></header>
 
-<div id="info-box">
-    <h2 id="puzzle-title" style="color:var(--gold); margin: 5px 0; font-size: 1.1rem;">로딩 중...</h2>
+<div id="info-box" style="margin-top:10px; text-align:center;">
+    <h2 id="puzzle-title" style="color:var(--gold); margin: 5px 0; font-size: 1.1rem;"></h2>
 </div>
 
 <div id="game-container"></div>
 
 <div class="btn-box">
-    <button onclick="newGame()">새로운 랜덤 퍼즐</button>
+    <button onclick="location.reload()">새로운 랜덤 퍼즐</button>
     <button onclick="shufflePieces()" style="margin-left:10px;">다시 섞기</button>
 </div>
 
@@ -49,13 +42,13 @@
     
     let currentPuzzle = null;
     let pieces = [];
-    const sideCount = 10; // 100조각
-    let boardSize = Math.min(window.innerWidth * 0.95, window.innerHeight * 0.6, 600);
+    const sideCount = 10; // 10x10 = 100조각
+    let boardSize = Math.min(window.innerWidth * 0.95, window.innerHeight * 0.7, 600);
     let pSize = boardSize / sideCount;
-    let tabSize = pSize * 0.25; // 튀어나온 코 부분 크기
+    let tabSize = pSize * 0.3; // 퍼즐 귀(Tab)의 크기
 
     window.onload = () => {
-        const saved = localStorage.getItem('jigsaw_puzzle_save');
+        const saved = localStorage.getItem('pro_jigsaw_save');
         if (saved) {
             const parsed = JSON.parse(saved);
             currentPuzzle = parsed.info;
@@ -63,15 +56,14 @@
             titleEl.innerText = currentPuzzle.title;
             renderPieces();
         } else {
-            newGame();
+            initNewGame();
         }
     };
 
-    function newGame() {
+    function initNewGame() {
         const randomIdx = Math.floor(Math.random() * puzzleList.length);
         currentPuzzle = puzzleList[randomIdx];
         titleEl.innerText = currentPuzzle.title;
-        
         container.style.width = boardSize + 'px';
         container.style.height = boardSize + 'px';
 
@@ -81,51 +73,67 @@
 
     function createPieces() {
         pieces = [];
-        // 조각마다 상하좌우 '탭(Tab)' 모양을 랜덤하게 결정 (1: 튀어나옴, -1: 들어감, 0: 평평)
-        const tabs = [];
+        const horizontalTabs = [];
+        const verticalTabs = [];
+
         for (let r = 0; r <= sideCount; r++) {
-            tabs[r] = [];
+            horizontalTabs[r] = [];
+            verticalTabs[r] = [];
             for (let c = 0; c <= sideCount; c++) {
-                tabs[r][c] = {
-                    h: (c === 0 || c === sideCount) ? 0 : (Math.random() > 0.5 ? 1 : -1),
-                    v: (r === 0 || r === sideCount) ? 0 : (Math.random() > 0.5 ? 1 : -1)
-                };
+                horizontalTabs[r][c] = (c === 0 || c === sideCount) ? 0 : (Math.random() > 0.5 ? 1 : -1);
+                verticalTabs[r][c] = (r === 0 || r === sideCount) ? 0 : (Math.random() > 0.5 ? 1 : -1);
             }
         }
 
         for (let r = 0; r < sideCount; r++) {
             for (let c = 0; c < sideCount; c++) {
                 pieces.push({
-                    id: `p-${r}-${c}`,
-                    r, c,
-                    cx: c * pSize, cy: r * pSize, // 정답 위치
-                    px: 0, py: 0,
-                    m: false,
-                    // 인접한 탭 정보 저장
-                    t: tabs[r][c].v,  // 위
-                    b: tabs[r+1][c].v, // 아래
-                    l: tabs[r][c].h,  // 왼쪽
-                    ri: tabs[r][c+1].h // 오른쪽
+                    id: `p-${r}-${c}`, r, c,
+                    cx: c * pSize, cy: r * pSize,
+                    px: 0, py: 0, m: false,
+                    topTab: verticalTabs[r][c],
+                    bottomTab: verticalTabs[r + 1][c],
+                    leftTab: horizontalTabs[r][c],
+                    rightTab: horizontalTabs[r][c + 1]
                 });
             }
         }
     }
 
-    // SVG 패스로 퍼즐 조각 모양 생성
-    function getPath(p) {
+    // 사진에서 보신 진짜 퍼즐 조각의 곡선 모양을 그리는 핵심 함수
+    function drawJigsawShape(p) {
         const s = pSize;
         const t = tabSize;
-        // 시작점
+        const neck = s * 0.2; // 목 부분 너비
+
+        // 상단 시작 (왼쪽 위에서 오른쪽으로)
         let path = `M ${t} ${t}`;
-        
-        // 상단 변
-        path += ` h ${s/2 - t} ${p.t ? `c 0 ${-t} ${t} ${-t} ${t} 0 c 0 ${t} ${-t} ${t} ${-t} 0` : ''} h ${s/2 - t}`;
-        // 우측 변
-        path += ` v ${s/2 - t} ${p.ri ? `c ${t} 0 ${t} ${t} 0 ${t} c ${-t} 0 ${-t} ${-t} 0 ${-t}` : ''} v ${s/2 - t}`;
-        // 하단 변
-        path += ` h ${-(s/2 - t)} ${p.b ? `c 0 ${t} ${-t} ${t} ${-t} 0 c 0 ${-t} ${t} ${-t} ${t} 0` : ''} h ${-(s/2 - t)}`;
-        // 좌측 변
-        path += ` v ${-(s/2 - t)} ${p.l ? `c ${-t} 0 ${-t} ${-t} 0 ${-t} c ${t} 0 ${t} ${t} 0 ${t}` : ''} v ${-(s/2 - t)} Z`;
+        if (p.topTab !== 0) {
+            path += ` L ${t + s/2 - neck/2} ${t}`;
+            path += ` C ${t + s/2 - neck} ${t - t*p.topTab}, ${t + s/2 + neck} ${t - t*p.topTab}, ${t + s/2 + neck/2} ${t}`;
+        }
+        path += ` L ${t + s} ${t}`;
+
+        // 우측 (위에서 아래로)
+        if (p.rightTab !== 0) {
+            path += ` L ${t + s} ${t + s/2 - neck/2}`;
+            path += ` C ${t + s + t*p.rightTab} ${t + s/2 - neck}, ${t + s + t*p.rightTab} ${t + s/2 + neck}, ${t + s} ${t + s/2 + neck/2}`;
+        }
+        path += ` L ${t + s} ${t + s}`;
+
+        // 하단 (오른쪽에서 왼쪽으로)
+        if (p.bottomTab !== 0) {
+            path += ` L ${t + s/2 + neck/2} ${t + s}`;
+            path += ` C ${t + s/2 + neck} ${t + s + t*p.bottomTab}, ${t + s/2 - neck} ${t + s + t*p.bottomTab}, ${t + s/2 - neck/2} ${t + s}`;
+        }
+        path += ` L ${t} ${t + s}`;
+
+        // 좌측 (아래에서 위로)
+        if (p.leftTab !== 0) {
+            path += ` L ${t} ${t + s/2 + neck/2}`;
+            path += ` C ${t - t*p.leftTab} ${t + s/2 + neck}, ${t - t*p.leftTab} ${t + s/2 - neck}, ${t} ${t + s/2 - neck/2}`;
+        }
+        path += ` L ${t} ${t} Z`;
 
         return path;
     }
@@ -138,10 +146,9 @@
         pieces.forEach(p => {
             const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
             svg.setAttribute("class", `piece ${p.m ? 'matched' : ''}`);
-            // 탭 공간 확보를 위해 실제 pSize보다 크게 설정
-            const viewSize = pSize + tabSize * 2;
-            svg.setAttribute("width", viewSize);
-            svg.setAttribute("height", viewSize);
+            const totalWidth = pSize + tabSize * 2;
+            svg.setAttribute("width", totalWidth);
+            svg.setAttribute("height", totalWidth);
             svg.style.left = (p.px - tabSize) + 'px';
             svg.style.top = (p.py - tabSize) + 'px';
 
@@ -149,7 +156,7 @@
             svg.innerHTML = `
                 <defs>
                     <clipPath id="${maskId}">
-                        <path d="${getPath(p)}" />
+                        <path d="${drawJigsawShape(p)}" />
                     </clipPath>
                 </defs>
                 <image href="${currentPuzzle.url}" 
@@ -170,7 +177,6 @@
             let rect = container.getBoundingClientRect();
             let x = cx - rect.left - (pSize/2);
             let y = cy - rect.top - (pSize/2);
-            
             el.style.left = (x - tabSize) + 'px';
             el.style.top = (y - tabSize) + 'px';
             pObj.px = x; pObj.py = y;
@@ -179,8 +185,7 @@
         const stop = () => {
             document.removeEventListener('mousemove', move);
             document.removeEventListener('touchmove', move);
-            
-            if (Math.abs(pObj.px - pObj.cx) < 12 && Math.abs(pObj.py - pObj.cy) < 12) {
+            if (Math.abs(pObj.px - pObj.cx) < 10 && Math.abs(pObj.py - pObj.cy) < 10) {
                 pObj.px = pObj.cx; pObj.py = pObj.cy;
                 pObj.m = true;
                 renderPieces();
@@ -188,15 +193,15 @@
             }
         };
 
-        el.addEventListener('mousedown', () => {
+        el.onmousedown = () => {
             document.addEventListener('mousemove', move);
             document.addEventListener('mouseup', stop, {once:true});
-        });
-        el.addEventListener('touchstart', (e) => {
+        };
+        el.ontouchstart = (e) => {
             if(e.cancelable) e.preventDefault();
             document.addEventListener('touchmove', move, {passive:false});
             document.addEventListener('touchend', stop, {once:true});
-        });
+        };
     }
 
     function shufflePieces() {
@@ -211,7 +216,7 @@
     }
 
     function saveGame() {
-        localStorage.setItem('jigsaw_puzzle_save', JSON.stringify({info: currentPuzzle, data: pieces}));
+        localStorage.setItem('pro_jigsaw_save', JSON.stringify({info: currentPuzzle, data: pieces}));
     }
 </script>
 </body>
