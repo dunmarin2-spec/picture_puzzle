@@ -3,17 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>프로 지그소 퍼즐: 100조각 복원</title>
+    <title>프로 지그소 퍼즐: 마스터 에디션</title>
     <style>
-        :root { --gold: #d4af37; --dark: #0a0a0a; }
+        :root { --gold: #d4af37; --dark: #050505; }
         body { background: var(--dark); color: white; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow: hidden; }
         header { padding: 15px; width: 100%; text-align: center; background: #000; border-bottom: 1px solid #333; z-index: 10; }
         h1 { color: var(--gold); margin: 0; font-size: 1.2rem; }
-        #game-container { position: relative; background: #111; box-shadow: 0 0 50px #000; margin-top: 20px; }
         
-        .piece { position: absolute; cursor: grab; filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.8)); }
-        .piece:active { cursor: grabbing; z-index: 999 !important; filter: drop-shadow(0px 0px 10px var(--gold)); }
-        .matched { cursor: default; z-index: 1 !important; filter: drop-shadow(0.5px 0.5px 0.5px rgba(255,255,255,0.1)) !important; }
+        #game-container { 
+            position: relative; 
+            background: #111; 
+            box-shadow: 0 0 50px #000; 
+            margin-top: 20px;
+            border: 2px solid #333; /* 판 경계 */
+        }
+        
+        /* 맞추기 전 조각: 경계선을 뚜렷하게 */
+        .piece { 
+            position: absolute; 
+            cursor: grab; 
+            /* 어두운 곳에서도 보이도록 밝은 외곽선 필터 적용 */
+            filter: drop-shadow(0px 0px 1px rgba(255,255,255,0.8)) drop-shadow(1px 1px 3px rgba(0,0,0,1));
+        }
+        
+        .piece path {
+            stroke: rgba(212, 175, 55, 0.6); /* 금색 테두리 라인 */
+            stroke-width: 1.5px;
+        }
+
+        .piece:active { 
+            cursor: grabbing; 
+            z-index: 999 !important; 
+            filter: drop-shadow(0px 0px 10px var(--gold)); 
+        }
+
+        /* 맞춘 후 조각: 경계선과 그림자 모두 제거 */
+        .matched { 
+            cursor: default; 
+            z-index: 1 !important; 
+            filter: none !important; 
+        }
+        .matched path {
+            stroke: none !important;
+        }
 
         .btn-box { margin-top: 20px; z-index: 10; }
         button { padding: 10px 20px; background: #222; border: 1px solid var(--gold); color: var(--gold); font-weight: bold; cursor: pointer; border-radius: 4px; }
@@ -22,7 +54,7 @@
 </head>
 <body>
 
-<header><h1>PIECES OF HISTORY (REAL JIGSAW)</h1></header>
+<header><h1>PIECES OF HISTORY (HD JIGSAW)</h1></header>
 
 <div id="info-box" style="margin-top:10px; text-align:center;">
     <h2 id="puzzle-title" style="color:var(--gold); margin: 5px 0; font-size: 1.1rem;"></h2>
@@ -42,13 +74,13 @@
     
     let currentPuzzle = null;
     let pieces = [];
-    const sideCount = 10; // 10x10 = 100조각
-    let boardSize = Math.min(window.innerWidth * 0.95, window.innerHeight * 0.7, 600);
+    const sideCount = 10; 
+    let boardSize = Math.min(window.innerWidth * 0.95, window.innerHeight * 0.65, 600);
     let pSize = boardSize / sideCount;
-    let tabSize = pSize * 0.3; // 퍼즐 귀(Tab)의 크기
+    let tabSize = pSize * 0.3;
 
     window.onload = () => {
-        const saved = localStorage.getItem('pro_jigsaw_save');
+        const saved = localStorage.getItem('hd_jigsaw_save');
         if (saved) {
             const parsed = JSON.parse(saved);
             currentPuzzle = parsed.info;
@@ -73,68 +105,43 @@
 
     function createPieces() {
         pieces = [];
-        const horizontalTabs = [];
-        const verticalTabs = [];
-
+        const hTabs = [];
+        const vTabs = [];
         for (let r = 0; r <= sideCount; r++) {
-            horizontalTabs[r] = [];
-            verticalTabs[r] = [];
+            hTabs[r] = []; vTabs[r] = [];
             for (let c = 0; c <= sideCount; c++) {
-                horizontalTabs[r][c] = (c === 0 || c === sideCount) ? 0 : (Math.random() > 0.5 ? 1 : -1);
-                verticalTabs[r][c] = (r === 0 || r === sideCount) ? 0 : (Math.random() > 0.5 ? 1 : -1);
+                hTabs[r][c] = (c === 0 || c === sideCount) ? 0 : (Math.random() > 0.5 ? 1 : -1);
+                vTabs[r][c] = (r === 0 || r === sideCount) ? 0 : (Math.random() > 0.5 ? 1 : -1);
             }
         }
-
         for (let r = 0; r < sideCount; r++) {
             for (let c = 0; c < sideCount; c++) {
                 pieces.push({
                     id: `p-${r}-${c}`, r, c,
                     cx: c * pSize, cy: r * pSize,
                     px: 0, py: 0, m: false,
-                    topTab: verticalTabs[r][c],
-                    bottomTab: verticalTabs[r + 1][c],
-                    leftTab: horizontalTabs[r][c],
-                    rightTab: horizontalTabs[r][c + 1]
+                    tT: vTabs[r][c], bT: vTabs[r + 1][c],
+                    lT: hTabs[r][c], rT: hTabs[r][c + 1]
                 });
             }
         }
     }
 
-    // 사진에서 보신 진짜 퍼즐 조각의 곡선 모양을 그리는 핵심 함수
-    function drawJigsawShape(p) {
-        const s = pSize;
-        const t = tabSize;
-        const neck = s * 0.2; // 목 부분 너비
-
-        // 상단 시작 (왼쪽 위에서 오른쪽으로)
-        let path = `M ${t} ${t}`;
-        if (p.topTab !== 0) {
-            path += ` L ${t + s/2 - neck/2} ${t}`;
-            path += ` C ${t + s/2 - neck} ${t - t*p.topTab}, ${t + s/2 + neck} ${t - t*p.topTab}, ${t + s/2 + neck/2} ${t}`;
-        }
-        path += ` L ${t + s} ${t}`;
-
-        // 우측 (위에서 아래로)
-        if (p.rightTab !== 0) {
-            path += ` L ${t + s} ${t + s/2 - neck/2}`;
-            path += ` C ${t + s + t*p.rightTab} ${t + s/2 - neck}, ${t + s + t*p.rightTab} ${t + s/2 + neck}, ${t + s} ${t + s/2 + neck/2}`;
-        }
-        path += ` L ${t + s} ${t + s}`;
-
-        // 하단 (오른쪽에서 왼쪽으로)
-        if (p.bottomTab !== 0) {
-            path += ` L ${t + s/2 + neck/2} ${t + s}`;
-            path += ` C ${t + s/2 + neck} ${t + s + t*p.bottomTab}, ${t + s/2 - neck} ${t + s + t*p.bottomTab}, ${t + s/2 - neck/2} ${t + s}`;
-        }
-        path += ` L ${t} ${t + s}`;
-
-        // 좌측 (아래에서 위로)
-        if (p.leftTab !== 0) {
-            path += ` L ${t} ${t + s/2 + neck/2}`;
-            path += ` C ${t - t*p.leftTab} ${t + s/2 + neck}, ${t - t*p.leftTab} ${t + s/2 - neck}, ${t} ${t + s/2 - neck/2}`;
-        }
-        path += ` L ${t} ${t} Z`;
-
+    function getPath(p) {
+        const s = pSize, t = tabSize, n = s * 0.2, ts = t;
+        let path = `M ${ts} ${ts}`;
+        // Top
+        if (p.tT !== 0) path += ` L ${ts+s/2-n/2} ${ts} C ${ts+s/2-n} ${ts-ts*p.tT}, ${ts+s/2+n} ${ts-ts*p.tT}, ${ts+s/2+n/2} ${ts}`;
+        path += ` L ${ts+s} ${ts}`;
+        // Right
+        if (p.rT !== 0) path += ` L ${ts+s} ${ts+s/2-n/2} C ${ts+s+ts*p.rT} ${ts+s/2-n}, ${ts+s+ts*p.rT} ${ts+s/2+n}, ${ts+s} ${ts+s/2+n/2}`;
+        path += ` L ${ts+s} ${ts+s}`;
+        // Bottom
+        if (p.bT !== 0) path += ` L ${ts+s/2+n/2} ${ts+s} C ${ts+s/2+n} ${ts+s+ts*p.bT}, ${ts+s/2-n} ${ts+s+ts*p.bT}, ${ts+s/2-n/2} ${ts+s}`;
+        path += ` L ${ts} ${ts+s}`;
+        // Left
+        if (p.lT !== 0) path += ` L ${ts} ${ts+s/2+n/2} C ${ts-ts*p.lT} ${ts+s/2+n}, ${ts-ts*p.lT} ${ts+s/2-n}, ${ts} ${ts+s/2-n/2}`;
+        path += ` Z`;
         return path;
     }
 
@@ -146,24 +153,21 @@
         pieces.forEach(p => {
             const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
             svg.setAttribute("class", `piece ${p.m ? 'matched' : ''}`);
-            const totalWidth = pSize + tabSize * 2;
-            svg.setAttribute("width", totalWidth);
-            svg.setAttribute("height", totalWidth);
+            const fullW = pSize + tabSize * 2;
+            svg.setAttribute("width", fullW);
+            svg.setAttribute("height", fullW);
             svg.style.left = (p.px - tabSize) + 'px';
             svg.style.top = (p.py - tabSize) + 'px';
 
             const maskId = `mask-${p.id}`;
             svg.innerHTML = `
                 <defs>
-                    <clipPath id="${maskId}">
-                        <path d="${drawJigsawShape(p)}" />
-                    </clipPath>
+                    <clipPath id="${maskId}"><path d="${getPath(p)}" /></clipPath>
                 </defs>
-                <image href="${currentPuzzle.url}" 
-                    x="${-p.cx + tabSize}" y="${-p.cy + tabSize}" 
-                    width="${boardSize}" height="${boardSize}" 
-                    clip-path="url(#${maskId})" />
-            `;
+                <g clip-path="url(#${maskId})">
+                    <image href="${currentPuzzle.url}" x="${-p.cx + tabSize}" y="${-p.cy + tabSize}" width="${boardSize}" height="${boardSize}" />
+                </g>
+                <path d="${getPath(p)}" fill="none" /> `;
 
             if (!p.m) addEvents(svg, p);
             container.appendChild(svg);
@@ -175,8 +179,15 @@
             let cx = e.touches ? e.touches[0].clientX : e.clientX;
             let cy = e.touches ? e.touches[0].clientY : e.clientY;
             let rect = container.getBoundingClientRect();
-            let x = cx - rect.left - (pSize/2);
-            let y = cy - rect.top - (pSize/2);
+            
+            // 🔴 판 밖으로 못 나가게 제한하는 핵심 로직
+            let x = cx - rect.left - (pSize / 2);
+            let y = cy - rect.top - (pSize / 2);
+            
+            // 경계값 계산 (조각의 절반 정도는 걸칠 수 있게 하되 중심이 이탈하지 않도록)
+            x = Math.max(0, Math.min(x, boardSize - pSize));
+            y = Math.max(0, Math.min(y, boardSize - pSize));
+
             el.style.left = (x - tabSize) + 'px';
             el.style.top = (y - tabSize) + 'px';
             pObj.px = x; pObj.py = y;
@@ -184,8 +195,11 @@
 
         const stop = () => {
             document.removeEventListener('mousemove', move);
+            document.removeEventListener('mouseup', stop);
             document.removeEventListener('touchmove', move);
-            if (Math.abs(pObj.px - pObj.cx) < 10 && Math.abs(pObj.py - pObj.cy) < 10) {
+            document.removeEventListener('touchend', stop);
+            
+            if (Math.abs(pObj.px - pObj.cx) < 12 && Math.abs(pObj.py - pObj.cy) < 12) {
                 pObj.px = pObj.cx; pObj.py = pObj.cy;
                 pObj.m = true;
                 renderPieces();
@@ -193,15 +207,15 @@
             }
         };
 
-        el.onmousedown = () => {
+        const start = (e) => {
             document.addEventListener('mousemove', move);
-            document.addEventListener('mouseup', stop, {once:true});
-        };
-        el.ontouchstart = (e) => {
-            if(e.cancelable) e.preventDefault();
+            document.addEventListener('mouseup', stop);
             document.addEventListener('touchmove', move, {passive:false});
-            document.addEventListener('touchend', stop, {once:true});
+            document.addEventListener('touchend', stop);
         };
+
+        el.addEventListener('mousedown', start);
+        el.addEventListener('touchstart', start, {passive:false});
     }
 
     function shufflePieces() {
@@ -216,7 +230,7 @@
     }
 
     function saveGame() {
-        localStorage.setItem('pro_jigsaw_save', JSON.stringify({info: currentPuzzle, data: pieces}));
+        localStorage.setItem('hd_jigsaw_save', JSON.stringify({info: currentPuzzle, data: pieces}));
     }
 </script>
 </body>
