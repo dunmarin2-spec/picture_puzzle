@@ -1,0 +1,15 @@
+{
+  "name": "역사의 조각 PRO",
+  "short_name": "역사퍼즐",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#d4af37",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3406/3406828.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
