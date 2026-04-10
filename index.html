@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>역사의 조각 PRO (색상 일치 버전)</title>
+    <title>역사의 조각 PRO (이미지 로딩 수정)</title>
     <style>
         :root { --gold: #d4af37; --dark: #050505; }
         html, body { 
@@ -20,18 +20,20 @@
         }
         canvas { 
             position: absolute; cursor: grab; 
-            filter: drop-shadow(0px 0px 1px rgba(255,255,255,0.5));
+            filter: drop-shadow(0px 0px 1.5px rgba(255,255,255,0.4));
         }
         canvas:active { cursor: grabbing; z-index: 999 !important; filter: drop-shadow(0px 0px 10px var(--gold)); }
         .matched { cursor: default; z-index: 1 !important; filter: none !important; }
         .btn-box { margin-top: 15px; display: flex; gap: 10px; flex-shrink: 0; }
         button { padding: 8px 15px; background: #222; border: 1px solid var(--gold); color: var(--gold); font-weight: bold; cursor: pointer; border-radius: 4px; }
+        #loading-msg { position: absolute; top: 50%; color: var(--gold); font-size: 1.2rem; display: block; }
     </style>
 </head>
 <body>
 
-<header><h1>PIECES OF HISTORY (COLOR PERFECT)</h1></header>
+<header><h1>PIECES OF HISTORY (FIXED)</h1></header>
 
+<div id="loading-msg">역사의 유물을 불러오는 중...</div>
 <div id="info-box" style="margin-top:5px;"><h2 id="puzzle-title" style="color:var(--gold); font-size: 1rem;"></h2></div>
 <div id="game-container"></div>
 <div class="btn-box">
@@ -43,34 +45,50 @@
 <script>
     const container = document.getElementById('game-container');
     const titleEl = document.getElementById('puzzle-title');
+    const loadMsg = document.getElementById('loading-msg');
     
     let currentPuzzle = null, pieces = [], sideCount = 10;
     let boardSize = Math.min(window.innerWidth * 0.95, window.innerHeight * 0.7, 600);
     let pSize = boardSize / sideCount, tabSize = pSize * 0.28;
 
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    img.crossOrigin = "Anonymous"; // 🔴 외부 이미지 사용을 위한 핵심 설정
 
     window.onload = () => {
+        // 터치 방지
         document.addEventListener('touchmove', e => { if (e.target.tagName === 'CANVAS') e.preventDefault(); }, { passive: false });
-        const saved = localStorage.getItem('canvas_jigsaw_save');
+        
+        const saved = localStorage.getItem('fixed_jigsaw_save');
         if (saved) {
             const parsed = JSON.parse(saved);
             currentPuzzle = parsed.info;
             pieces = parsed.data;
             titleEl.innerText = currentPuzzle.title;
-            img.src = currentPuzzle.url;
-            img.onload = () => renderPieces();
-        } else { initNewGame(); }
+            loadImg(currentPuzzle.url);
+        } else { 
+            initNewGame(); 
+        }
     };
+
+    function loadImg(url) {
+        loadMsg.style.display = 'block';
+        img.src = url;
+        img.onload = () => {
+            loadMsg.style.display = 'none';
+            renderPieces();
+        };
+        img.onerror = () => {
+            loadMsg.innerText = "이미지를 불러오지 못했습니다. 다른 그림을 시도하세요.";
+        };
+    }
 
     function initNewGame() {
         currentPuzzle = puzzleList[Math.floor(Math.random() * puzzleList.length)];
         titleEl.innerText = currentPuzzle.title;
         container.style.width = boardSize + 'px';
         container.style.height = boardSize + 'px';
-        img.src = currentPuzzle.url;
-        img.onload = () => { createPieces(); shufflePieces(); };
+        createPieces();
+        loadImg(currentPuzzle.url);
     }
 
     function createPieces() {
@@ -86,7 +104,7 @@
         for (let r = 0; r < sideCount; r++) {
             for (let c = 0; c < sideCount; c++) {
                 pieces.push({
-                    id: `p-${r}-${c}`, r, c, cx: c * pSize, cy: r * pSize, px: 0, py: 0, m: false,
+                    id: `p-${r}-${c}`, r, c, cx: c * pSize, cy: r * pSize, px: Math.random()*(boardSize-pSize), py: Math.random()*(boardSize-pSize), m: false,
                     tT: vTabs[r][c], bT: vTabs[r + 1][c], lT: hTabs[r][c], rT: hTabs[r][c + 1]
                 });
             }
@@ -121,11 +139,12 @@
             ctx.save();
             drawShape(ctx, p, 0, 0);
             ctx.clip();
-            ctx.drawImage(img, p.cx, p.cy, pSize, pSize, tabSize, tabSize, pSize, pSize);
+            // 🔴 원본 이미지의 비율에 맞춰 그리기
+            ctx.drawImage(img, (p.c * (img.width/sideCount)), (p.r * (img.height/sideCount)), img.width/sideCount, img.height/sideCount, tabSize, tabSize, pSize, pSize);
             
             if (!p.m) {
-                ctx.strokeStyle = "rgba(212,175,55,0.6)";
-                ctx.lineWidth = 2;
+                ctx.strokeStyle = "rgba(212,175,55,0.7)";
+                ctx.lineWidth = 1.5;
                 ctx.stroke();
             }
             ctx.restore();
@@ -164,8 +183,8 @@
         pieces.forEach(p => { if (!p.m) { p.px = Math.random()*(boardSize-pSize); p.py = Math.random()*(boardSize-pSize); } });
         renderPieces(); saveGame();
     }
-    function saveGame() { localStorage.setItem('canvas_jigsaw_save', JSON.stringify({info: currentPuzzle, data: pieces})); }
-    function newGame() { localStorage.removeItem('canvas_jigsaw_save'); location.reload(); }
+    function saveGame() { localStorage.setItem('fixed_jigsaw_save', JSON.stringify({info: currentPuzzle, data: pieces})); }
+    function newGame() { localStorage.removeItem('fixed_jigsaw_save'); location.reload(); }
 </script>
 </body>
 </html>
